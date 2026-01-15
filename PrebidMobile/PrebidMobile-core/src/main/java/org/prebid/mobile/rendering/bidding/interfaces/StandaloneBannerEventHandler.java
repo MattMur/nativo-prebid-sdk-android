@@ -16,10 +16,7 @@
 
 package org.prebid.mobile.rendering.bidding.interfaces;
 
-import androidx.annotation.Nullable;
-
 import org.prebid.mobile.AdSize;
-import org.prebid.mobile.rendering.bidding.data.bid.Bid;
 import org.prebid.mobile.rendering.bidding.data.bid.BidResponse;
 import org.prebid.mobile.rendering.bidding.listeners.BannerEventListener;
 
@@ -37,13 +34,8 @@ public class StandaloneBannerEventHandler implements BannerEventHandler {
     }
 
     @Override
-    public void requestAdWithBid(Bid bid) {
-        bannerViewListener.onPrebidSdkWin();
-    }
-
-    @Override
-    public void requestAdWithBidResponses(@Nullable BidResponse prebidResponse, @Nullable BidResponse externalResponse) {
-        bannerViewListener.onPrebidSdkWin();
+    public void requestAdWithBid(BidResponse bid) {
+        bannerViewListener.onSdkWin(bid);
     }
 
     @Override

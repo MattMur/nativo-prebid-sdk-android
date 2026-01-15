@@ -17,14 +17,14 @@
 package org.prebid.mobile.rendering.bidding.listeners;
 
 import android.view.View;
+
+import androidx.annotation.Nullable;
+
 import org.prebid.mobile.api.exceptions.AdException;
+import org.prebid.mobile.rendering.bidding.data.bid.BidResponse;
 
 public interface BannerEventListener {
-    void onPrebidSdkWin();
-
-    default void onNativoSdkWin() {
-        onPrebidSdkWin();
-    }
+    void onSdkWin(@Nullable BidResponse bidResponse);
 
     void onAdServerWin(View view);
 

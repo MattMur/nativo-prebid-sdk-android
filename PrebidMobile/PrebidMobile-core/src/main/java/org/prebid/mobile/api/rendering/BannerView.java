@@ -21,6 +21,7 @@ import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.Pair;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -45,8 +46,8 @@ import org.prebid.mobile.rendering.bidding.data.bid.Bid;
 import org.prebid.mobile.rendering.bidding.data.bid.BidResponse;
 import org.prebid.mobile.rendering.bidding.interfaces.BannerEventHandler;
 import org.prebid.mobile.rendering.bidding.interfaces.ExternalBidRequester;
+import org.prebid.mobile.rendering.bidding.interfaces.StandaloneBannerEventHandler;
 
-import com.nativo.prebidsdk.handlers.NativoStandaloneBannerHandler;
 import com.nativo.prebidsdk.networking.NativoBidRequester;
 
 import org.prebid.mobile.rendering.bidding.listeners.BannerEventListener;
@@ -176,48 +177,34 @@ public class BannerView extends FrameLayout {
         @Override
         public void onFetchCompleted(BidResponse response) {
             bidResponse = response;
-            Bid winningBid = getWinnerBid();
-            isPrimaryAdServerRequestInProgress = winningBid != null;
-            eventHandler.requestAdWithBidResponses(response, nativoBidResponse);
+            BidResponse winningBidResponse = decideWinner(response, nativoBidResponse);
+            isPrimaryAdServerRequestInProgress = winningBidResponse != null;
+            eventHandler.requestAdWithBid(winningBidResponse);
         }
 
         @Override
         public void onError(AdException exception) {
-            Bid winningBid = getWinnerBid();
-            isPrimaryAdServerRequestInProgress = winningBid != null;
-            eventHandler.requestAdWithBidResponses(null, nativoBidResponse);
+            Log.d(TAG, exception.toString());
+            BidResponse winningBidResponse = nativoBidResponse;
+            isPrimaryAdServerRequestInProgress = winningBidResponse != null;
+            eventHandler.requestAdWithBid(winningBidResponse);
         }
     };
 
     private final BannerEventListener bannerEventListener = new BannerEventListener() {
         @Override
-        public void onPrebidSdkWin() {
+        public void onSdkWin(@Nullable BidResponse sdkBidResponse) {
             markPrimaryAdRequestFinished();
 
-            if (isBidInvalid()) {
+            if (isBidInvalid(sdkBidResponse)) {
                 notifyErrorListener(new AdException(
                         AdException.INTERNAL_ERROR,
-                        "WinnerBid is null when executing onPrebidSdkWin."
+                        "WinnerBid is null when executing onSdkWin."
                 ));
                 return;
             }
 
-            displayAdWithBid(bidResponse);
-        }
-
-        @Override
-        public void onNativoSdkWin() {
-            markPrimaryAdRequestFinished();
-
-            if (isBidInvalid()) {
-                notifyErrorListener(new AdException(
-                        AdException.INTERNAL_ERROR,
-                        "WinnerBid is null when executing onNativoSdkWin."
-                ));
-                return;
-            }
-
-            displayAdWithBid(nativoBidResponse);
+            displayAdWithBid(sdkBidResponse);
         }
 
         @Override
@@ -232,12 +219,13 @@ public class BannerView extends FrameLayout {
         public void onAdFailed(AdException exception) {
             markPrimaryAdRequestFinished();
 
-            if (isBidInvalid()) {
+            BidResponse winningBidResponse = decideWinner(bidResponse, nativoBidResponse);
+            if (isBidInvalid(winningBidResponse)) {
                 notifyErrorListener(exception);
                 return;
             }
 
-            onPrebidSdkWin();
+            onSdkWin(winningBidResponse);
         }
 
         @Override
@@ -272,7 +260,7 @@ public class BannerView extends FrameLayout {
     ) {
         super(context, attrs);
 
-        eventHandler = new NativoStandaloneBannerHandler();
+        eventHandler = new StandaloneBannerEventHandler();
         reflectAttrs(attrs);
         init();
     }
@@ -286,7 +274,7 @@ public class BannerView extends FrameLayout {
         AdSize size
     ) {
         super(context);
-        eventHandler = new NativoStandaloneBannerHandler();
+        eventHandler = new StandaloneBannerEventHandler();
         this.configId = configId;
         adUnitConfig.addSize(size);
 
@@ -511,13 +499,39 @@ public class BannerView extends FrameLayout {
             }
 
             if (response != null && nativoBidRequester.shouldRenderImmediately(response)) {
-                bidResponse = response;
-                isPrimaryAdServerRequestInProgress = true;
-                bannerEventListener.onNativoSdkWin();
+                isPrimaryAdServerRequestInProgress = false;
+                bannerEventListener.onSdkWin(nativoBidResponse);
             } else {
                 bidLoader.load();
             }
         });
+    }
+
+    @Nullable
+    private BidResponse decideWinner(@Nullable BidResponse prebidResponse, @Nullable BidResponse nativoResponse) {
+        if (prebidResponse == null) {
+            return nativoResponse;
+        }
+        if (nativoResponse == null) {
+            return prebidResponse;
+        }
+        double prebidPrice = getBidPrice(prebidResponse);
+        double nativoPrice = getBidPrice(nativoResponse);
+
+        if (nativoPrice >= prebidPrice) {
+            return nativoResponse;
+        }
+        return prebidResponse;
+    }
+
+    private static double getBidPrice(@Nullable BidResponse response) {
+        Bid bid = getBidFromResponse(response);
+        return bid != null ? bid.getPrice() : 0.0;
+    }
+
+    @Nullable
+    private static Bid getBidFromResponse(@Nullable BidResponse response) {
+        return response != null ? response.getWinningBid() : null;
     }
 
     private void displayAdWithBid(BidResponse bidResponse) {
@@ -573,8 +587,8 @@ public class BannerView extends FrameLayout {
         }
     }
 
-    private boolean isBidInvalid() {
-        return bidResponse == null || bidResponse.getWinningBid() == null;
+    private boolean isBidInvalid(@Nullable BidResponse response) {
+        return response == null || response.getWinningBid() == null;
     }
 
     public BidResponse getBidResponse() {
@@ -603,7 +617,8 @@ public class BannerView extends FrameLayout {
 
     @VisibleForTesting
     final Bid getWinnerBid() {
-        return bidResponse != null ? bidResponse.getWinningBid() : null;
+        BidResponse response = decideWinner(bidResponse, nativoBidResponse);
+        return getBidFromResponse(response);
     }
 
     @VisibleForTesting

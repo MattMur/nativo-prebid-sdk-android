@@ -29,6 +29,7 @@ import org.prebid.mobile.LogUtil;
 import org.prebid.mobile.api.exceptions.AdException;
 import org.prebid.mobile.eventhandlers.global.Constants;
 import org.prebid.mobile.rendering.bidding.data.bid.Bid;
+import org.prebid.mobile.rendering.bidding.data.bid.BidResponse;
 import org.prebid.mobile.rendering.bidding.interfaces.BannerEventHandler;
 import org.prebid.mobile.rendering.bidding.listeners.BannerEventListener;
 
@@ -58,6 +59,8 @@ public class GamBannerEventHandler implements BannerEventHandler, GamAdEventList
     private Handler appEventHandler;
 
     private boolean isExpectingAppEvent;
+
+    private BidResponse sdkBidResponse;
 
     /**
      * @param context     activity or application context.
@@ -129,7 +132,7 @@ public class GamBannerEventHandler implements BannerEventHandler, GamAdEventList
 
     @SuppressLint("MissingPermission")
     @Override
-    public void requestAdWithBid(Bid bid) {
+    public void requestAdWithBid(BidResponse bidResponse) {
         isExpectingAppEvent = false;
 
         if (requestBanner != null) {
@@ -144,6 +147,8 @@ public class GamBannerEventHandler implements BannerEventHandler, GamAdEventList
             requestBanner = createPublisherAdView();
         }
 
+        sdkBidResponse = bidResponse;
+        Bid bid = bidResponse != null ? bidResponse.getWinningBid() : null;
         if (bid != null && bid.getPrice() > 0) {
             isExpectingAppEvent = true;
         }
@@ -206,7 +211,7 @@ public class GamBannerEventHandler implements BannerEventHandler, GamAdEventList
         isExpectingAppEvent = false;
         recycleCurrentBanner();
         proxyBanner = gamBannerView;
-        bannerEventListener.onPrebidSdkWin();
+        bannerEventListener.onSdkWin(sdkBidResponse);
     }
 
     private void scheduleTimer() {

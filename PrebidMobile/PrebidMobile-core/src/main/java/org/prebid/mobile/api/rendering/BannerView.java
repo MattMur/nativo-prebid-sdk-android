@@ -44,7 +44,11 @@ import org.prebid.mobile.core.R;
 import org.prebid.mobile.rendering.bidding.data.bid.Bid;
 import org.prebid.mobile.rendering.bidding.data.bid.BidResponse;
 import org.prebid.mobile.rendering.bidding.interfaces.BannerEventHandler;
-import org.prebid.mobile.rendering.bidding.interfaces.StandaloneBannerEventHandler;
+import org.prebid.mobile.rendering.bidding.interfaces.ExternalBidRequester;
+
+import com.nativo.prebidsdk.handlers.NativoStandaloneBannerHandler;
+import com.nativo.prebidsdk.networking.NativoBidRequester;
+
 import org.prebid.mobile.rendering.bidding.listeners.BannerEventListener;
 import org.prebid.mobile.rendering.bidding.listeners.BidRequesterListener;
 import org.prebid.mobile.rendering.bidding.listeners.DisplayVideoListener;
@@ -58,7 +62,6 @@ import org.prebid.mobile.rendering.utils.broadcast.ScreenStateReceiver;
 import org.prebid.mobile.rendering.utils.helpers.VisibilityChecker;
 import org.prebid.mobile.rendering.views.webview.mraid.Views;
 
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -76,6 +79,9 @@ public class BannerView extends FrameLayout {
     private DisplayView displayView;
     private BidLoader bidLoader;
     private BidResponse bidResponse;
+    @Nullable private BidResponse nativoBidResponse;
+    @Nullable private AdException nativoBidError;
+    private boolean isNativoBidRequestInProgress;
 
     private final ScreenStateReceiver screenStateReceiver = new ScreenStateReceiver();
 
@@ -170,15 +176,16 @@ public class BannerView extends FrameLayout {
         @Override
         public void onFetchCompleted(BidResponse response) {
             bidResponse = response;
-
-            isPrimaryAdServerRequestInProgress = true;
-            eventHandler.requestAdWithBid(getWinnerBid());
+            Bid winningBid = getWinnerBid();
+            isPrimaryAdServerRequestInProgress = winningBid != null;
+            eventHandler.requestAdWithBidResponses(response, nativoBidResponse);
         }
 
         @Override
         public void onError(AdException exception) {
-            bidResponse = null;
-            eventHandler.requestAdWithBid(null);
+            Bid winningBid = getWinnerBid();
+            isPrimaryAdServerRequestInProgress = winningBid != null;
+            eventHandler.requestAdWithBidResponses(null, nativoBidResponse);
         }
     };
 
@@ -195,7 +202,22 @@ public class BannerView extends FrameLayout {
                 return;
             }
 
-            displayPrebidView();
+            displayAdWithBid(bidResponse);
+        }
+
+        @Override
+        public void onNativoSdkWin() {
+            markPrimaryAdRequestFinished();
+
+            if (isBidInvalid()) {
+                notifyErrorListener(new AdException(
+                        AdException.INTERNAL_ERROR,
+                        "WinnerBid is null when executing onNativoSdkWin."
+                ));
+                return;
+            }
+
+            displayAdWithBid(nativoBidResponse);
         }
 
         @Override
@@ -250,7 +272,7 @@ public class BannerView extends FrameLayout {
     ) {
         super(context, attrs);
 
-        eventHandler = new StandaloneBannerEventHandler();
+        eventHandler = new NativoStandaloneBannerHandler();
         reflectAttrs(attrs);
         init();
     }
@@ -264,7 +286,7 @@ public class BannerView extends FrameLayout {
         AdSize size
     ) {
         super(context);
-        eventHandler = new StandaloneBannerEventHandler();
+        eventHandler = new NativoStandaloneBannerHandler();
         this.configId = configId;
         adUnitConfig.addSize(size);
 
@@ -296,12 +318,19 @@ public class BannerView extends FrameLayout {
             return;
         }
 
+        if (isNativoBidRequestInProgress) {
+            LogUtil.debug(TAG, "loadAd: Skipped. External bid request is in progress.");
+            return;
+        }
+
         if (isPrimaryAdServerRequestInProgress) {
             LogUtil.debug(TAG, "loadAd: Skipped. Loading is in progress.");
             return;
         }
 
-        bidLoader.load();
+        nativoBidResponse = null;
+        nativoBidError = null;
+        requestNativoBid(new NativoBidRequester());
     }
 
     /**
@@ -469,7 +498,29 @@ public class BannerView extends FrameLayout {
         adUnitConfig.addSizes(eventHandler.getAdSizeArray());
     }
 
-    private void displayPrebidView() {
+
+    private void requestNativoBid(ExternalBidRequester nativoBidRequester) {
+        isNativoBidRequestInProgress = true;
+        nativoBidRequester.requestBids(adUnitConfig, (response, error) -> {
+            isNativoBidRequestInProgress = false;
+            nativoBidResponse = response;
+            nativoBidError = error;
+
+            if (error != null) {
+                LogUtil.error(TAG, "External bid request failed: " + error.getMessage());
+            }
+
+            if (response != null && nativoBidRequester.shouldRenderImmediately(response)) {
+                bidResponse = response;
+                isPrimaryAdServerRequestInProgress = true;
+                bannerEventListener.onNativoSdkWin();
+            } else {
+                bidLoader.load();
+            }
+        });
+    }
+
+    private void displayAdWithBid(BidResponse bidResponse) {
         if (indexOfChild(displayView) != -1) {
             displayView.destroy();
             displayView = null;

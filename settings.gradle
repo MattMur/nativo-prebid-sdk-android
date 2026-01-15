@@ -24,6 +24,5 @@ project(':test-utils').projectDir = new File('PrebidMobile/test-utils')
 project(':PrebidDemoJava').projectDir = new File('Example/PrebidDemoJava')
 project(':PrebidDemoKotlin').projectDir = new File('Example/PrebidDemoKotlin')
 project(':PrebidInternalTestApp').projectDir = new File('Example/PrebidInternalTestApp')
-include ':PrebidMobile:Nativo-Prebid-Renderer'
 
 //project(':DrPrebid').projectDir = new File('tools/drprebid')

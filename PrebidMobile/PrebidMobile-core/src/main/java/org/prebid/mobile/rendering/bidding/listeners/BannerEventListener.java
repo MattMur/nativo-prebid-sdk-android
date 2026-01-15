@@ -22,6 +22,10 @@ import org.prebid.mobile.api.exceptions.AdException;
 public interface BannerEventListener {
     void onPrebidSdkWin();
 
+    default void onNativoSdkWin() {
+        onPrebidSdkWin();
+    }
+
     void onAdServerWin(View view);
 
     void onAdFailed(AdException exception);

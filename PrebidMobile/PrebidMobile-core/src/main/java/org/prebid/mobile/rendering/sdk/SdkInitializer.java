@@ -7,6 +7,7 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
+import com.nativo.prebidsdk.renderer.NativoPrebidRenderer;
 import org.prebid.mobile.LogUtil;
 import org.prebid.mobile.LogUtil.PrebidLogger;
 import org.prebid.mobile.PrebidMobile;
@@ -55,6 +56,9 @@ public class SdkInitializer {
 
         try {
             PrebidMobile.registerPluginRenderer(new PrebidRenderer());
+
+            // Register Nativo rendering plugin as a default option
+            PrebidMobile.registerPluginRenderer(new NativoPrebidRenderer());
 
             AppInfoManager.init(applicationContext);
 

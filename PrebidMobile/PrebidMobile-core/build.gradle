@@ -1,3 +1,4 @@
+apply plugin: 'org.jetbrains.kotlin.android'
 apply from: '../android.gradle'
 apply from: '../publisher.gradle'
 apply from: '../tests.gradle'
@@ -25,6 +26,10 @@ android {
             systemProperty 'robolectric.invokedynamic.enable', 'false'
         }
     }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
 }
 
 
@@ -32,6 +37,7 @@ dependencies {
     implementation project(":omsdk-android")
 
     implementation libs.androidx.annotation
+    implementation libs.kotlin.stdlib
 
     implementation libs.google.play.services.base
     implementation libs.google.play.services.ads.identifier

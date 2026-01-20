@@ -69,7 +69,7 @@ public class PrebidMobile {
     /**
      * SDK name provided for MRAID_ENV in {@link MraidEnv}
      */
-    public static final String SDK_NAME = "prebid-mobile-sdk-rendering";
+    public static final String SDK_NAME = "nativo-prebid-sdk-rendering";
     /**
      * Currently implemented MRAID version.
      */

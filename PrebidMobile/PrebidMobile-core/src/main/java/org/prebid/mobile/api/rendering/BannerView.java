@@ -23,6 +23,7 @@ import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.Pair;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
 
@@ -543,9 +544,13 @@ public class BannerView extends FrameLayout {
         removeAllViews();
 
         displayView = new DisplayView(getContext(), displayViewListener, displayVideoListener, adUnitConfig, bidResponse);
-        if (bidResponse.getPreferredPluginRendererName() == PrebidMobilePluginRegister.PREBID_MOBILE_RENDERER_NAME) {
+        // I believe this may have been a bug since the first clause would never be true since originally getPreferredPluginRendererName()
+        // would return 'null' unless the renderer was explicitely set, which for the default PrebidRenderer it never would be.
+        // Because of this, slight change to PrebidSDK needed here in order to ensure non-Nativo ads render as expected
+        // with correct width and height.
+        if (bidResponse.getPreferredPluginRendererName().equals(PrebidMobilePluginRegister.PREBID_MOBILE_RENDERER_NAME)) {
             final Pair<Integer, Integer> sizePair = bidResponse.getWinningBidWidthHeightPairDips(getContext());
-            addView(displayView, sizePair.first, sizePair.second);
+            addView(displayView, new FrameLayout.LayoutParams(sizePair.first, sizePair.second, Gravity.CENTER));
         } else {
             addView(displayView, new FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT));
         }

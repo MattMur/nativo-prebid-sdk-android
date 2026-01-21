@@ -23,7 +23,6 @@ class NativoPrebidRenderer : PrebidMobilePluginRenderer {
 
     companion object {
         private const val TAG = "NativoPrebidRenderer"
-        private const val LAYOUT_FIX_DELAY_MS = 200L
         const val NAME = "NativoRenderer"
         const val VERSION = "1.0.0"
     }
@@ -45,12 +44,13 @@ class NativoPrebidRenderer : PrebidMobilePluginRenderer {
         val forwardingListener = object : DisplayViewListener {
             override fun onAdLoaded() {
                 displayViewListener.onAdLoaded()
-                displayViewRef?.let { scheduleLayoutFix(it) }
             }
 
             override fun onAdDisplayed() {
                 displayViewListener.onAdDisplayed()
-                displayViewRef?.let { scheduleLayoutFix(it) }
+                displayViewRef?.let {
+                    setChildrenFullWidth(it)
+                }
             }
 
             override fun onAdFailed(exception: AdException) {
@@ -77,7 +77,7 @@ class NativoPrebidRenderer : PrebidMobilePluginRenderer {
 
         displayView.layoutParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
+            ViewGroup.LayoutParams.WRAP_CONTENT
         )
 
         return displayView
@@ -101,27 +101,22 @@ class NativoPrebidRenderer : PrebidMobilePluginRenderer {
         return adUnitConfiguration.isAdType(AdFormat.BANNER)
     }
 
-    private fun scheduleLayoutFix(displayView: ViewGroup) {
-        // Allow the inner Prebid view to be injected before enforcing match-parent sizing.
-        displayView.postDelayed({
-            ensureMatchParent(displayView)
+    private fun setChildrenFullWidth(displayView: ViewGroup) {
             val child = displayView.getChildAt(0)
             if (child == null) {
                 LogUtil.error(TAG, "Nativo renderer expected a child view on PrebidDisplayView, but none was found.")
-                return@postDelayed
+                return
             }
-            ensureMatchParent(child)
+            ensureFullWidth(child)
             if (child is ViewGroup && child.childCount > 0) {
-                ensureMatchParent(child.getChildAt(0))
+                ensureFullWidth(child.getChildAt(0))
             }
-        }, LAYOUT_FIX_DELAY_MS)
     }
 
-    private fun ensureMatchParent(view: View) {
+    private fun ensureFullWidth(view: View) {
         val layoutParams = view.layoutParams
         if (layoutParams != null) {
             layoutParams.width = ViewGroup.LayoutParams.MATCH_PARENT
-            layoutParams.height = ViewGroup.LayoutParams.MATCH_PARENT
             view.layoutParams = layoutParams
             return
         }
@@ -129,15 +124,11 @@ class NativoPrebidRenderer : PrebidMobilePluginRenderer {
         view.layoutParams = when (view.parent) {
             is FrameLayout -> FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            is ViewGroup -> ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+                ViewGroup.LayoutParams.WRAP_CONTENT
             )
             else -> ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+                ViewGroup.LayoutParams.WRAP_CONTENT
             )
         }
     }

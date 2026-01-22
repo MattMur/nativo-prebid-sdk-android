@@ -23,12 +23,13 @@ import android.widget.FrameLayout;
 
 import androidx.core.content.ContextCompat;
 
+import com.nativo.prebidsdk.exposure.NativoCreativeVisibilityTracker;
+
 import org.prebid.mobile.LogUtil;
 import org.prebid.mobile.api.exceptions.AdException;
 import org.prebid.mobile.configuration.AdUnitConfiguration;
 import org.prebid.mobile.rendering.bidding.data.bid.BidResponse;
 import org.prebid.mobile.rendering.models.AdDetails;
-import org.prebid.mobile.rendering.models.CreativeVisibilityTracker;
 import org.prebid.mobile.rendering.models.internal.InternalFriendlyObstruction;
 import org.prebid.mobile.rendering.models.internal.VisibilityTrackerOption;
 import org.prebid.mobile.rendering.models.internal.VisibilityTrackerResult;
@@ -51,8 +52,8 @@ public class VideoView extends BaseAdView {
 
     private VideoViewListener listener;
 
-    private CreativeVisibilityTracker visibilityTracker;
-    private final CreativeVisibilityTracker.VisibilityTrackerListener visibilityTrackerListener = this::handleVisibilityChange;
+    private NativoCreativeVisibilityTracker visibilityTracker;
+    private final NativoCreativeVisibilityTracker.VisibilityTrackerListener visibilityTrackerListener = this::handleVisibilityChange;
 
     private State videoViewState = State.UNDEFINED;
 
@@ -338,7 +339,7 @@ public class VideoView extends BaseAdView {
         stopVisibilityTracking();
 
         final VisibilityTrackerOption visibilityTrackerOption = new VisibilityTrackerOption(NativeEventTracker.EventType.IMPRESSION);
-        visibilityTracker = new CreativeVisibilityTracker(
+        visibilityTracker = new NativoCreativeVisibilityTracker(
             this,
             visibilityTrackerOption,
             true

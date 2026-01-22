@@ -11,9 +11,10 @@ import android.webkit.WebView;
 
 import androidx.annotation.Nullable;
 
+import com.nativo.prebidsdk.exposure.NativoCreativeVisibilityTracker;
+
 import org.jetbrains.annotations.NotNull;
 import org.prebid.mobile.addendum.AdViewUtils;
-import org.prebid.mobile.rendering.models.CreativeVisibilityTracker;
 import org.prebid.mobile.rendering.models.internal.VisibilityTrackerOption;
 import org.prebid.mobile.rendering.models.ntv.NativeEventTracker;
 import org.prebid.mobile.rendering.networking.tracking.ServerConnection;
@@ -79,7 +80,7 @@ public class VisibilityMonitor {
 
         private WeakReference<View> containerViewReference;
         @Nullable
-        private CreativeVisibilityTracker visibilityTracker;
+        private NativoCreativeVisibilityTracker visibilityTracker;
 
         public VisibilityTimer() {
             super(LONGEVITY, INTERVAL);
@@ -129,7 +130,7 @@ public class VisibilityMonitor {
                 visibilityTracker.stopVisibilityCheck();
             }
 
-            visibilityTracker = new CreativeVisibilityTracker(webView, new VisibilityTrackerOption(NativeEventTracker.EventType.IMPRESSION));
+            visibilityTracker = new NativoCreativeVisibilityTracker(webView, new VisibilityTrackerOption(NativeEventTracker.EventType.IMPRESSION));
             visibilityTracker.setVisibilityTrackerListener(result -> {
                 boolean visible = result.isVisible();
                 if (visible) {

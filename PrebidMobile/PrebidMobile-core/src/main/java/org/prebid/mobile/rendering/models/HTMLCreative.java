@@ -21,6 +21,9 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.ViewGroup;
 import androidx.annotation.VisibleForTesting;
+
+import com.nativo.prebidsdk.exposure.NativoCreativeVisibilityTracker;
+
 import org.prebid.mobile.ContentObject;
 import org.prebid.mobile.LogUtil;
 import org.prebid.mobile.api.data.AdFormat;
@@ -177,7 +180,7 @@ public class HTMLCreative extends AbstractCreative implements WebViewDelegate, I
     @Override
     public void startViewabilityTracker() {
         VisibilityTrackerOption visibilityTrackerOption = new VisibilityTrackerOption(NativeEventTracker.EventType.IMPRESSION);
-        creativeVisibilityTracker = new CreativeVisibilityTracker(getCreativeView().getWebView(),
+        creativeVisibilityTracker = new NativoCreativeVisibilityTracker(getCreativeView().getWebView(),
                 visibilityTrackerOption,
                 ((PrebidWebViewBase) getCreativeView()).getWebView().isMRAID()
         );

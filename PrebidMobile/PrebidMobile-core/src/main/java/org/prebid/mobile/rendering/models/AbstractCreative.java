@@ -32,6 +32,7 @@ import org.prebid.mobile.rendering.session.manager.OmAdSessionManager;
 import org.prebid.mobile.rendering.video.VideoAdEvent;
 import org.prebid.mobile.rendering.views.AdViewManager;
 import org.prebid.mobile.rendering.views.interstitial.InterstitialManager;
+import com.nativo.prebidsdk.exposure.NativoCreativeVisibilityTracker;
 
 import java.lang.ref.WeakReference;
 
@@ -51,7 +52,7 @@ public abstract class AbstractCreative {
 
     private View creativeView;
 
-    protected CreativeVisibilityTracker creativeVisibilityTracker;
+    protected NativoCreativeVisibilityTracker creativeVisibilityTracker;
 
     public AbstractCreative(
             Context context,

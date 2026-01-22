@@ -11,6 +11,7 @@ import org.prebid.mobile.rendering.utils.exposure.ViewExposureChecker
 import org.prebid.mobile.rendering.utils.helpers.VisibilityChecker
 import org.prebid.mobile.rendering.views.webview.mraid.Views
 import com.nativo.prebidsdk.utils.NativoUtils
+import com.nativo.prebidsdk.utils.PausableCountDownTimer
 import java.lang.ref.WeakReference
 import java.util.Collections
 
@@ -23,7 +24,6 @@ class NativoCreativeVisibilityTracker(
         fun onVisibilityChanged(result: VisibilityTrackerResult)
     }
 
-    private val onPreDrawListener: ViewTreeObserver.OnPreDrawListener
     private val onScrollChangedListener: ViewTreeObserver.OnScrollChangedListener
     private val onGlobalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener
     private var weakViewTreeObserver: WeakReference<ViewTreeObserver?>
@@ -33,8 +33,9 @@ class NativoCreativeVisibilityTracker(
     private var visibilityTrackerListener: VisibilityTrackerListener? = null
     private var proceedAfterImpTracking: Boolean = false
 
+    private val viewabilityTimerMap: MutableMap<VisibilityChecker, PausableCountDownTimer> = mutableMapOf()
+
     private val viewabilityCheckDebouncer: (Any?) -> Unit
-    private var isPreDrawTracking: Boolean = false
 
     constructor(
         trackedView: View,
@@ -62,13 +63,8 @@ class NativoCreativeVisibilityTracker(
             visibilityCheckerList.add(VisibilityChecker(trackingOption, viewExposureChecker))
         }
 
-        viewabilityCheckDebouncer = NativoUtils.debounceAction(VISIBILITY_THROTTLE_MILLIS) {
+        viewabilityCheckDebouncer = NativoUtils.debounceAction(VISIBILITY_DEBOUNCE_MILLIS) {
             runViewabilityCheck()
-        }
-
-        onPreDrawListener = ViewTreeObserver.OnPreDrawListener {
-            viewabilityCheckDebouncer.invoke(null)
-            true
         }
 
         onScrollChangedListener = ViewTreeObserver.OnScrollChangedListener {
@@ -107,11 +103,6 @@ class NativoCreativeVisibilityTracker(
         val viewTreeObserver = weakViewTreeObserver.get()
         if (viewTreeObserver != null && viewTreeObserver.isAlive) {
             try {
-                viewTreeObserver.removeOnPreDrawListener(onPreDrawListener)
-            } catch (e: Exception) {
-                LogUtil.error(TAG, "Error removing pre-draw listener: ${e.message}")
-            }
-            try {
                 viewTreeObserver.removeOnScrollChangedListener(onScrollChangedListener)
             } catch (e: Exception) {
                 LogUtil.error(TAG, "Error removing scroll listener: ${e.message}")
@@ -122,7 +113,6 @@ class NativoCreativeVisibilityTracker(
                 LogUtil.error(TAG, "Error removing global layout listener: ${e.message}")
             }
         }
-        isPreDrawTracking = false
         weakViewTreeObserver.clear()
     }
 
@@ -153,30 +143,6 @@ class NativoCreativeVisibilityTracker(
         viewTreeObserver.addOnGlobalLayoutListener(onGlobalLayoutListener)
     }
 
-    private fun startPreDrawListener() {
-        if (!isPreDrawTracking) {
-            isPreDrawTracking = true
-            val viewTreeObserver = weakViewTreeObserver.get()
-            if (viewTreeObserver != null && viewTreeObserver.isAlive) {
-                viewTreeObserver.addOnPreDrawListener(onPreDrawListener)
-            }
-        }
-    }
-
-    private fun stopPreDrawListener() {
-        if (isPreDrawTracking) {
-            isPreDrawTracking = false
-            val viewTreeObserver = weakViewTreeObserver.get()
-            if (viewTreeObserver != null && viewTreeObserver.isAlive) {
-                try {
-                    viewTreeObserver.removeOnPreDrawListener(onPreDrawListener)
-                } catch (e: Exception) {
-                    LogUtil.error(TAG, "Error removing pre-draw listener: ${e.message}")
-                }
-            }
-        }
-    }
-
     private fun runViewabilityCheck() {
         val trackedView = this.trackedView.get()
         if (trackedView == null) {
@@ -189,24 +155,26 @@ class NativoCreativeVisibilityTracker(
             var shouldFireImpression = false
             val isVisible = visibilityChecker.isVisible(trackedView, viewExposure)
 
-            // If the view meets the visibility requirement, also check the viewable duration.
+            // Manage viewability timer to ensure ad is visible for set duration before imp is fired
             val visibilityTrackerOption = visibilityChecker.visibilityTrackerOption
-
+            var viewabilityTimer = viewabilityTimerMap[visibilityChecker]
             if (isVisible) {
-                if (!visibilityChecker.hasBeenVisible()) {
-                    visibilityChecker.setStartTimeMillis()
+                // Start viewability duration timer, which will call runViewabilityCheck() again when finished
+                if (viewabilityTimer == null) {
+                    val viewableImpDuration = visibilityTrackerOption.minimumVisibleMillis.toLong()
+                    viewabilityTimer = PausableCountDownTimer(viewableImpDuration) {
+                        runViewabilityCheck()
+                    }
+                    viewabilityTimerMap[visibilityChecker] = viewabilityTimer
+                    viewabilityTimer.start()
                 }
 
-                if (visibilityChecker.hasRequiredTimeElapsed()) {
-                    shouldFireImpression = !visibilityTrackerOption.isImpressionTracked
+                if (viewabilityTimer.isFinished && !visibilityTrackerOption.isImpressionTracked) {
+                    shouldFireImpression = true
                     visibilityTrackerOption.isImpressionTracked = true
-                } else {
-                    // Visible but min-viewable duration not reached yet
-                    // Keep firing on PreDraw event until min-viewable duration reached
-                    startPreDrawListener()
                 }
             } else {
-                stopPreDrawListener()
+                viewabilityTimer?.pause()
             }
 
             val visibilityTrackerResult = VisibilityTrackerResult(
@@ -242,6 +210,6 @@ class NativoCreativeVisibilityTracker(
         private val TAG = NativoCreativeVisibilityTracker::class.java.simpleName
 
         // Time interval to use for throttling visibility checks and debounce window for events.
-        private const val VISIBILITY_THROTTLE_MILLIS = 150L
+        private const val VISIBILITY_DEBOUNCE_MILLIS = 150L
     }
 }

@@ -548,7 +548,7 @@ public class BannerView extends FrameLayout {
         // would return 'null' unless the renderer was explicitely set, which for the default PrebidRenderer it never would be.
         // Because of this, slight change to PrebidSDK needed here in order to ensure non-Nativo ads render as expected
         // with correct width and height.
-        if (bidResponse.getPreferredPluginRendererName().equals(PrebidMobilePluginRegister.PREBID_MOBILE_RENDERER_NAME)) {
+        if (PrebidMobilePluginRegister.PREBID_MOBILE_RENDERER_NAME.equals(bidResponse.getPreferredPluginRendererName())) {
             final Pair<Integer, Integer> sizePair = bidResponse.getWinningBidWidthHeightPairDips(getContext());
             addView(displayView, new FrameLayout.LayoutParams(sizePair.first, sizePair.second, Gravity.CENTER));
         } else {

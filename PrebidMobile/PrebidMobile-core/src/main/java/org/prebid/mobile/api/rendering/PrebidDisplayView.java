@@ -66,6 +66,8 @@ public class PrebidDisplayView extends FrameLayout {
     @Nullable
     private VideoView videoView;
 
+    protected Boolean destoyOnDetatch = true;
+
     @Nullable
     private EventForwardingLocalBroadcastReceiver eventForwardingReceiver;
     private final EventForwardingLocalBroadcastReceiver.EventForwardingBroadcastListener broadcastListener = this::handleBroadcastAction;
@@ -205,7 +207,12 @@ public class PrebidDisplayView extends FrameLayout {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
 
-        destroy();
+        // Odd default PrebidSDK behavior that conflicts with how RecyclerView attempts to recycle views
+        // by removing views from the window, which causes PrebidSDK to completely deallocate the ad.
+        // This Nativo addition attempts to fix that so ads have more permanence.
+        if (destoyOnDetatch) {
+            destroy();
+        }
     }
 
     public void destroy() {

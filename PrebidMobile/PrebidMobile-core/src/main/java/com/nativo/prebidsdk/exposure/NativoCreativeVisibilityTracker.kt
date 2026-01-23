@@ -35,7 +35,7 @@ class NativoCreativeVisibilityTracker(
 
     private val viewabilityTimerMap: MutableMap<VisibilityChecker, PausableCountDownTimer> = mutableMapOf()
 
-    private val viewabilityCheckDebouncer: (Any?) -> Unit
+    private val viewabilityCheckDebouncer: () -> Unit
 
     constructor(
         trackedView: View,
@@ -68,10 +68,10 @@ class NativoCreativeVisibilityTracker(
         }
 
         onScrollChangedListener = ViewTreeObserver.OnScrollChangedListener {
-            viewabilityCheckDebouncer.invoke(null)
+            viewabilityCheckDebouncer.invoke()
         }
         onGlobalLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
-            viewabilityCheckDebouncer.invoke(null)
+            viewabilityCheckDebouncer.invoke()
         }
 
         weakViewTreeObserver = WeakReference(null)
@@ -89,14 +89,14 @@ class NativoCreativeVisibilityTracker(
         }
         setViewTreeObserver(context, tracked)
         // Run initial check
-        viewabilityCheckDebouncer.invoke(null)
+        viewabilityCheckDebouncer.invoke()
     }
 
     /**
      * Used for interstitial cases, when the ad is opened in the new view hierarchy or received the new window focus.
      */
     fun restartVisibilityCheck() {
-        viewabilityCheckDebouncer.invoke(null)
+        viewabilityCheckDebouncer.invoke()
     }
 
     fun stopVisibilityCheck() {

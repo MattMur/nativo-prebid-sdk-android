@@ -8,7 +8,6 @@ class NativoPathBuilder : URLPathBuilder() {
     }
 
     companion object {
-        // TODO: https?
-        const val NATIVO_ENDPOINT = "http://exchange.postrelease.com/esi.json?ntv_epid=7&ntv_tm=tout"
+        const val NATIVO_ENDPOINT = "https://exchange.postrelease.com/esi.json?ntv_epid=7&ntv_tm=tout"
     }
 }
